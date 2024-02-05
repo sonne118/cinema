@@ -1,36 +1,36 @@
 using ApiApplication.Domain.Common.Models;
+using static ApiApplication.Domain.Common.DomainErrors.Errors;
 
-namespace ApiApplication.Domain.ShowTimeAggregate
+namespace ApiApplication.Domain.Domain.ShowTimeAggregate
 {
     public sealed class Auditorium : Entity<AuditoriumId>
-    {
-        private readonly List<ShowTime> _items = new();
+    {       
+       // public AuditoriumId auditoriumId { get; set; }
 
-        private readonly List<SeatEntity> _seats = new();
-        public string Name { get; private set; }
-        public string Description { get; private set; }
+      //  public AuditoriumId Id { get; set; }
 
-        public IReadOnlyList<ShowTime> Items => _items.AsReadOnly();
+        private readonly List<ShowTime> _showTime = new();
+
+        private readonly List<SeatEntity> _seats = new();     
+
+        public IReadOnlyList<ShowTime> ShowTime => _showTime.AsReadOnly();
 
         public IReadOnlyList<SeatEntity> Seats => _seats.AsReadOnly();
 
-        private Auditorium(string name, string description, List<SeatEntity> seats, List<ShowTime> items, AuditoriumId id = null)
-            : base(id ?? AuditoriumId.CreateUnique())
+        private Auditorium(List<SeatEntity> seats, List<ShowTime> showTime, AuditoriumId? Id = null)
+            : base(Id ?? AuditoriumId.CreateUnique())
         {
-            Name = name;
-            Description = description;
-            _items = items;
+            //auditoriumId = AuditoriumId.CreateUnique();
+            _showTime = showTime;
             _seats = seats;
         }
 
-        public static Auditorium Create(
-            string name,
-            string description,
-            List<SeatEntity> seats = null,
-            List<ShowTime> items = null)
+        public static Auditorium Create(          
+            List<SeatEntity> seats ,
+            List<ShowTime> items)
         {
             // TODO: enforce invariants
-            return new Auditorium(name, description, seats ?? new (), items ?? new());
+            return new Auditorium( seats, items );
         }
 
         private Auditorium()

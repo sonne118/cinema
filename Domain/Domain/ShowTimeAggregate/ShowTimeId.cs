@@ -1,9 +1,8 @@
-using ErrorOr;
-using System;
 using ApiApplication.Domain.Common.DomainErrors;
 using ApiApplication.Domain.Common.Models;
+using ErrorOr;
 
-namespace ApiApplication.Domain.ShowTimeAggregate
+namespace ApiApplication.Domain.Domain.ShowTimeAggregate
 {
     public sealed class ShowTimeId : AggregateRootId<Guid>
     {
@@ -27,10 +26,11 @@ namespace ApiApplication.Domain.ShowTimeAggregate
         {
             if (!Guid.TryParse(value, out var guid))
             {
-                return Errors.ShowTime.InvalidMenuId;
+                return Errors.ShowTimes.InvalidMenuId;
             }
 
             return new ShowTimeId(guid);
-        }
+        }       
+
     }
 }

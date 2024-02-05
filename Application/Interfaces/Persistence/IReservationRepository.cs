@@ -1,9 +1,10 @@
-using ApiApplication.Domain.TicketAggregate;
+//using ApiApplication.Domain.Domain.ShowTimeAggregate;
+//using ApiApplication.Domain.TicketAggregate;
 
-namespace Application.Common.Interfaces.Persistence;
+//namespace ApiApplication.Common.Interfaces.Persistence;
 
-public interface IReservationRepository
-{
-    Task AddAsync(Reservation dinner);
-   //  Task<List<Reservation>> ListAsync(HostId hostId);
-}
+//public interface IReservationRepository
+//{
+//    Task AddAsync(Reservation dinner);
+//     //Task<List<ShowTime> ListAsync(HostId hostId);
+//}

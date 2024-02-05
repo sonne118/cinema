@@ -1,6 +1,6 @@
 using Application.Common.Interfaces.Services;
 
-namespace Infrastructure.Persistence.Repositories;
+namespace ApiApplication.Infrastructure.Persistence.Repositories;
 
 public class DateTimeProvider : IDateTimeProvider
 {

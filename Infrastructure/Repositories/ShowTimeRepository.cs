@@ -1,9 +1,8 @@
-using ApiApplication.Domain.ShowTimeAggregate;
-using ApiApplication.Infrastructure.Persistence;
-using Application.Common.Interfaces.Persistence;
+using ApiApplication.Common.Interfaces.Persistence;
+using ApiApplication.Domain.Domain.ShowTimeAggregate;
 using Microsoft.EntityFrameworkCore;
 
-namespace Infrastructure.Persistence.Repositories;
+namespace ApiApplication.Infrastructure.Persistence.Repositories;
 
 public class ShowTimeRepository : IShowTimeRepository
 {

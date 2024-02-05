@@ -1,12 +1,13 @@
-using Infrastructure.Persistence.Interceptors;
-using Application.Common.Interfaces.Persistence;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Infrastructure.Persistence.Repositories;
+using ApiApplication.Common.Interfaces.Persistence;
+using ApiApplication.Infrastructure.Persistence;
+using ApiApplication.Infrastructure.Persistence.Interceptors;
+using ApiApplication.Infrastructure.Persistence.Repositories;
 using Application.Common.Interfaces.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace BuberDinner.Infrastructure;
+namespace ApiApplication.Infrastructure;
 
 public static class DependencyInjection
 {
@@ -24,8 +25,8 @@ public static class DependencyInjection
     public static IServiceCollection AddPersistance(
         this IServiceCollection services)
     {
-        services.AddDbContext<DbContext>(options =>
-            options.UseSqlServer("Server=localhost;Database=BuberDinner;User Id=SA;Password=amiko123!;TrustServerCertificate=true"));
+        services.AddDbContext<DbContextApi>(options =>
+            options.UseSqlServer("Server=localhost,1433;Database=Movies;User Id=SA;Password=Pass12345;TrustServerCertificate=true"));
 
         services.AddScoped<PublishDomainEventsInterceptor>();
         services.AddScoped<IShowTimeRepository, ShowTimeRepository>();      

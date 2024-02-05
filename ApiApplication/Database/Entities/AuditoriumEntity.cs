@@ -1,13 +1,13 @@
-﻿using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿//using System.Collections.Generic;
+//using System.ComponentModel.DataAnnotations.Schema;
 
-namespace ApiApplication.Database.Entities
-{
-    public class AuditoriumEntity
-    {
-        public int Id { get; set; }
-        public List<ShowtimeEntity> Showtimes { get; set; }
-        public ICollection<SeatEntity1> Seats { get; set; }
+//namespace ApiApplication.Database.Entities
+//{
+//    public class AuditoriumEntity
+//    {
+//        public int Id { get; set; }
+//        public List<ShowtimeEntity> Showtimes { get; set; }
+//        public ICollection<SeatEntity1> Seats { get; set; }
        
-    }
-}
+//    }
+//}

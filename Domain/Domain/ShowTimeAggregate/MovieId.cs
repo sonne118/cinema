@@ -1,6 +1,6 @@
 using ApiApplication.Domain.Common.Models;
 
-namespace ApiApplication.Domain.ShowTimeAggregate
+namespace ApiApplication.Domain.Domain.ShowTimeAggregate
 {
 
     public sealed class MovieId : EntityId<Guid>
@@ -17,6 +17,11 @@ namespace ApiApplication.Domain.ShowTimeAggregate
         public static MovieId CreateUnique()
         {
             return new MovieId(Guid.NewGuid());
+        }
+
+        private MovieId()
+        {
+                
         }
     }
 

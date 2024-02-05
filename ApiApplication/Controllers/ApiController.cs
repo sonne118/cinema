@@ -7,10 +7,10 @@ using System.Collections.Generic;
 using System.Linq;
 using ErrorOr;
 
-namespace BuberDinner.Api.Controllers;
+namespace ApiApplication.Api.Controllers;
 
 [ApiController]
-[Authorize]
+//[Authorize]
 public class ApiController : ControllerBase
 {
     protected IActionResult Problem(List<Error> errors)

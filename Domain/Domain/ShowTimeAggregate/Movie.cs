@@ -1,21 +1,20 @@
 using ApiApplication.Domain.Common.Models;
-using ApiApplication.Domain.TicketAggregate;
 
-namespace ApiApplication.Domain.ShowTimeAggregate
+namespace ApiApplication.Domain.Domain.ShowTimeAggregate
 {
 
     public sealed class Movie : Entity<MovieId>   
     {        
-        public Guid Id { get; set; }
-        public string Title { get; set; }
-        public string ImdbId { get; set; }
-        public string Stars { get; set; }
-        public DateTime ReleaseDate { get; set; }        
+      //  public Guid Id { get; set; }
+        public string Title { get; private set; }
+        public string ImdbId { get; private set; }
+        public string Stars { get; private set; }
+        public DateTime ReleaseDate { get; private set; }        
         
         private readonly List<ShowTime> _showTimes = new();
         public IReadOnlyList<ShowTime> TicketEntities => _showTimes.AsReadOnly();
 
-        private Movie(Guid Id, string title, string imdbId, string stars, DateTime releaseDate, MovieId? id = null)
+        private Movie(string title, string imdbId, string stars, DateTime releaseDate, MovieId? id = null)
             : base(MovieId.CreateUnique())
            //:base(Id)
         {
@@ -28,7 +27,7 @@ namespace ApiApplication.Domain.ShowTimeAggregate
         public static Movie Create(Guid Id,string title, string imdbId, string stars, DateTime releaseDate)
         {
             // TODO: enforce invariants
-            return new Movie(Id,title, imdbId, stars, releaseDate);
+            return new Movie(title, imdbId, stars, releaseDate);
         }
         private Movie()
         {

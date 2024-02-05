@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace ApiApplication.Domain.Common.Models
 {
     public sealed class AverageRating : ValueObject

@@ -1,8 +1,8 @@
 using ApiApplication.Domain.Common.Models;
 
-namespace ApiApplication.Domain.ShowTimeAggregate
+namespace ApiApplication.Domain.Domain.ShowTimeAggregate
 {
-    public sealed class TicketId : AggregateRootId<Guid>
+    public sealed class TicketId : EntityId<Guid>//AggregateRootId<Guid>
     {
         private TicketId(Guid value) : base(value)
         {
@@ -17,5 +17,10 @@ namespace ApiApplication.Domain.ShowTimeAggregate
         {
             return new TicketId(value);
         }
+        public TicketId()
+        {
+            
+        }
+
     }
 }

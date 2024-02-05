@@ -1,9 +1,8 @@
 using ApiApplication.Domain.Common.Models;
-using System;
 
-namespace ApiApplication.Domain.ShowTimeAggregate;
+namespace ApiApplication.Domain.Domain.ShowTimeAggregate;
 
-    public sealed class SeatId : EntityId<Guid>
+public sealed class SeatId : EntityId<Guid>
     {
         private SeatId(Guid value) : base(value)
         {
@@ -18,4 +17,9 @@ namespace ApiApplication.Domain.ShowTimeAggregate;
         {
             return new SeatId(Guid.NewGuid());
         }
+
+    private SeatId()
+    {
+            
     }
+}

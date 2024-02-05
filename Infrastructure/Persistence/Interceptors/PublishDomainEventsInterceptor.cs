@@ -3,7 +3,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
-namespace Infrastructure.Persistence.Interceptors;
+namespace ApiApplication.Infrastructure.Persistence.Interceptors; 
 
 public class PublishDomainEventsInterceptor : SaveChangesInterceptor
 {

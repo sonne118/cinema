@@ -5,7 +5,7 @@ namespace ApiApplication.Domain.Common.DomainErrors
 
     public static partial class Errors
     {
-        public static class ShowTime
+        public static class ShowTimes
         {
             public static Error InvalidMenuId => Error.Validation(
                 code: "Menu.InvalidId",
@@ -16,7 +16,7 @@ namespace ApiApplication.Domain.Common.DomainErrors
                 description: "Menu with given ID does not exist");
         }
 
-        public static class Auditorium
+        public static class Auditoriums
         {
             public static Error InvalidMenuId => Error.Validation(
                 code: "Menu.InvalidId",

@@ -1,33 +1,49 @@
 using ApiApplication.Domain.Common.Models;
-using BuberDinner.Domain.DinnerAggregate.Enums;
+using System.Collections.Generic;
+using static ApiApplication.Domain.Common.DomainErrors.Errors;
 
-namespace ApiApplication.Domain.ShowTimeAggregate
+namespace ApiApplication.Domain.Domain.ShowTimeAggregate
 {
     public sealed class TicketEntity : Entity<TicketId>
     {
         // public TicketStatus TicketStatus { get; private set; }
 
        // public Guid Id { get; set; }
-        public int ShowtimeId { get; set; }
+       // public int ShowtimeId { get; set; }
+        public ShowTimeId ShowTimeId { get; set; }
+        public ShowTime Showtime { get; set; }
         public ICollection<SeatEntity> SeatEntities { get; set; }
         public DateTime CreatedTime { get; set; }
         public bool Paid { get; set; }
-        //public ShowtimeEntity Showtime { get; set; }
+        
+        public ShowTime ShowTime { get; set; }
 
-        private TicketEntity(int guestCount)//, TicketStatus ticketStatus
+        private TicketEntity(ShowTimeId showtimeId, ICollection<SeatEntity> seatEntities, DateTime createdTime, bool paid, ShowTime showtime)
             : base(TicketId.CreateUnique())
         {
-            //TicketStatus = ticketStatus;
+            ShowTimeId = showtimeId;
+            SeatEntities = seatEntities;
+            CreatedTime = createdTime;
+            Paid = paid;
+            ShowTime = showtime;
         }
 
-        public static TicketEntity Create(int guestCount)     //, TicketStatus ticketStatus)
+        //private TicketEntity(int guestCount)//, TicketStatus ticketStatus
+        //    : base(TicketId.CreateUnique())
+        //{
+        //    //TicketStatus = ticketStatus;
+        //}
+
+        public static TicketEntity Create(ShowTimeId showtimeId, ICollection<SeatEntity> seatEntities, DateTime createdTime, bool paid, ShowTime showtime)     //, TicketStatus ticketStatus)
         {
             // TODO: Enforce invariants
-            return new TicketEntity(guestCount);   //, ticketStatus);
+            return new TicketEntity(showtimeId, seatEntities,createdTime,paid,showtime);   //, ticketStatus);
         }
 
         private TicketEntity()
         {
+            //CreatedTime = DateTime.Now;
+            //Paid = false;
         }
     }
 

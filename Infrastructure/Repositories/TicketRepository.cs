@@ -1,27 +1,25 @@
-using ApiApplication.Domain.TicketAggregate;
-using Application.Common.Interfaces.Persistence;
-using Microsoft.EntityFrameworkCore;
+//using Microsoft.EntityFrameworkCore;
 
-namespace Infrastructure.Persistence.Repositories;
+//namespace ApiApplication.Infrastructure.Persistence.Repositories;
 
-public class DinnerRepository : IReservationRepository
-{
-    private readonly DbContext _dbContext;
+//public class DinnerRepository : IReservationRepository
+//{
+//    private readonly DbContext _dbContext;
 
-    public DinnerRepository(DbContext dbContext)
-    {
-        _dbContext = dbContext;
-    }
+//    public DinnerRepository(DbContext dbContext)
+//    {
+//        _dbContext = dbContext;
+//    }
 
-    public async Task AddAsync(Reservation dinner)
-    {
-        await _dbContext.AddAsync(dinner);
+//    public async Task AddAsync(Reservation dinner)
+//    {
+//        await _dbContext.AddAsync(dinner);
 
-        await _dbContext.SaveChangesAsync();
-    }
+//        await _dbContext.SaveChangesAsync();
+//    }
 
-    //public async Task<List<Ticket>> ListAsync(HostId hostId)
-    //{
-    //    return await _dbContext.Tickets.Where(dinner => dinner.HostId == hostId).ToListAsync();
-    //}
-}
+//    //public async Task<List<Ticket>> ListAsync(HostId hostId)
+//    //{
+//    //    return await _dbContext.Tickets.Where(dinner => dinner.HostId == hostId).ToListAsync();
+//    //}
+//}

@@ -1,10 +1,12 @@
-using ApiApplication.Domain.ShowTimeAggregate;
-namespace Application.Common.Interfaces.Persistence;
+using ApiApplication.Domain.Domain.ShowTimeAggregate;
 
-public interface IShowTimeRepository
+namespace ApiApplication.Common.Interfaces.Persistence
 {
-    Task UpdateAsync(ShowTime menu);
-    Task AddAsync(ShowTime menu);
-    Task<ShowTime?> GetByIdAsync(ShowTimeId menuId);
-    Task<bool> ExistsAsync(ShowTimeId menuId); 
+    public interface IShowTimeRepository
+    {
+        Task UpdateAsync(ShowTime menu);
+        Task AddAsync(ShowTime menu);
+        Task<ShowTime?> GetByIdAsync(ShowTimeId menuId);
+        Task<bool> ExistsAsync(ShowTimeId menuId);
+    }
 }

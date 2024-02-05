@@ -1,18 +1,23 @@
 using ApiApplication.Domain.Common.Models;
+using ApiApplication.Domain.Common.DomainErrors;
+using ErrorOr;
+using System.ComponentModel.DataAnnotations.Schema;
 
-namespace ApiApplication.Domain.ShowTimeAggregate
+namespace ApiApplication.Domain.Domain.ShowTimeAggregate
 {
     public sealed class ShowTime : AggregateRoot<ShowTimeId, Guid>
     {
         //public int Id { get; set; } Guid
-        public ShowTimeId ShowTimeId { get; private set; }
+        //public ShowTimeId ShowTimeId { get; private set; }
+        //public Auditorium Auditorium { get; set; }
         public DateTime SessionDate { get; private set; }
         public MovieId MovieId { get; private set; }
+        public Movie Movie { get; private set; }
         public AuditoriumId AuditoriumId { get; private set; }
-        public DateTime CreatedDateTime { get; private set; }
-        public DateTime UpdatedDateTime { get; private set; }
+       // public Auditorium Auditorium { get; private set; }
 
         private readonly List<TicketEntity> _tickets = new();
+        [NotMapped]
         public IReadOnlyList<TicketEntity> TicketEntities => _tickets.AsReadOnly();
         private ShowTime(
             ShowTimeId showTimeId,
@@ -22,9 +27,9 @@ namespace ApiApplication.Domain.ShowTimeAggregate
             : base(showTimeId)
         {
             MovieId = movieId;
-            AuditoriumId = auditoriumId;
+            //AuditoriumId = auditoriumId;
             SessionDate = sessionDate;
-            ShowTimeId = showTimeId;
+            // ShowTimeId = showTimeId;
         }
 
         public static ShowTime Create(

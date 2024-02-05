@@ -1,17 +1,20 @@
 using ApiApplication.Domain.Common.Models;
-using System.Net;
-using System.Xml.Linq;
 
-namespace ApiApplication.Domain.ShowTimeAggregate;
+namespace ApiApplication.Domain.Domain.ShowTimeAggregate;
 
 public sealed class SeatEntity : Entity<SeatId> //: ValueObject
 {
+   // public Guid Id { get; set; }
     public short Row { get; set; }
     public short SeatNumber { get; set; }
-    public int AuditoriumId { get; set; }
-    public Auditorium Auditorium { get; set; }
 
-    public SeatEntity(short row, short seatNumber, int auditoriumId, Auditorium auditorium)
+    // public TicketId TicketId { get; set; }
+     public AuditoriumId AuditoriumId { get; set; }
+    public Auditorium Auditorium { get; set; }
+   // public AuditoriumId AuditoriumId { get; private set; }
+
+    public SeatEntity(short row, short seatNumber, Auditorium auditorium, AuditoriumId auditoriumId) // int auditoriumId
+     : base(SeatId.CreateUnique())
     {
         Row = row;
         SeatNumber = seatNumber;
@@ -19,10 +22,15 @@ public sealed class SeatEntity : Entity<SeatId> //: ValueObject
         Auditorium = auditorium;
     }
 
-    public static SeatEntity Create(short row, short seatNumber, int auditoriumId, Auditorium auditorium)
+    public static SeatEntity Create(short row, short seatNumber, AuditoriumId auditoriumId, Auditorium auditorium)   //int auditoriumId
     {
         // TODO: Enforce invariants
-        return new SeatEntity(row, seatNumber, auditoriumId, auditorium);
+        return new SeatEntity(row, seatNumber, auditorium, auditoriumId);
+    }
+
+    private SeatEntity()
+    {
+        
     }
 
     //public override IEnumerable<object> GetEqualityComponents()

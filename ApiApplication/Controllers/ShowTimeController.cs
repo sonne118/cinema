@@ -1,14 +1,15 @@
+using ApiApplication.Application.ShowTimes.Command.CreateShowTime;
+using ApiApplication.Application.ShowTimes.Query.List;
 using ApiApplication.Contracts.Menus;
-using BuberDinner.Application.Menus.Commands.CreateMenu;
-using BuberDinner.Application.Menus.Queries.ListMenus;
 using MapsterMapper;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq;
 using System.Threading.Tasks;
 
-namespace BuberDinner.Api.Controllers;
+namespace ApiApplication.Api.Controllers;
 
-[Route("hosts/{hostId}/menus")]
+[Route("hosts/{hostId}")]
 public class ShowTimeController : ApiController
 {
     private readonly IMapper _mapper;
@@ -25,11 +26,11 @@ public class ShowTimeController : ApiController
         CreateMenuRequest request,
         string hostId)
     {
-        var command = _mapper.Map<CreateMenuCommand>((request, hostId));
+        var command = _mapper.Map<CreateShowTimeCommand>((request, hostId));
 
-        var createMenuResult = await _mediator.Send(command);
+        var createShowTimeResult = await _mediator.Send(command);
 
-        return createMenuResult.Match(
+        return createShowTimeResult.Match(
             menu => Ok(_mapper.Map<MenuResponse>(menu)),
             errors => Problem(errors));
     }
