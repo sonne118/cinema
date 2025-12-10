@@ -89,35 +89,42 @@ It separates **write operations** (business logic) from **read operations** (que
 
 ---
 
-# Cinema DDD Architecture
+## 🏗️ Architecture Overview
 
-## 🏗️ System Architecture
-````mermaid
+```mermaid
 graph TB
     subgraph "Entry Point"
-        Gateway[🌐 API Gateway<br/>Ocelot]
-        LB[⚖️ Load Balancer<br/>YARP]
+        Gateway[🌐 API Gateway<br/>(Ocelot)]
+        LB[⚖️ Load Balancer<br/>(YARP)]
     end
 
-    subgraph "Write Side - Commands"
+    subgraph "Write Side (Commands)"
         API1[⚙️ Cinema API 1<br/>Port 5001]
         API2[⚙️ Cinema API 2<br/>Port 5002]
-        SQL[🗄️ SQL Server<br/>Write DB]
+        SQL[(🗄️ SQL Server<br/>Write DB)]
         Outbox[🔄 Outbox Job<br/>Every 10s]
     end
     
     subgraph "Event Streaming"
-        Kafka[📨 Kafka Broker<br/>Port 9092]
+        Kafka{{📨 Kafka Broker<br/>Port 9092}}
         Topic1[Topic: cinema.domain.events]
     end
     
-    subgraph "Read Side - Queries"
-        Consumer[📥 Kafka Consumer<br/>Read Service]
-        ReadService[🚀 Read Service<br/>gRPC Port 7080]
-        Mongo[🍃 MongoDB<br/>Read DB]
-        Redis[⚡ Redis<br/>Cache]
+    subgraph "Read Side (Queries)"
+        Consumer[📥 Kafka Consumer<br/>(Read Service)]
+        ReadService[🚀 Read Service<br/>(gRPC)]
+        
+        subgraph "MongoDB Replica Set"
+            direction TB
+            Mongo1[(🍃 Primary)]
+            Mongo2[(🍃 Secondary)]
+            Mongo3[(🍃 Secondary)]
+        end
+
+        Redis[(⚡ Redis<br/>Cache)]
     end
     
+    %% Flow
     Gateway -->|POST/PUT| LB
     LB --> API1
     LB --> API2
@@ -130,20 +137,24 @@ graph TB
     Kafka -->|Stream| Topic1
     
     Topic1 -.->|Consume| Consumer
-    Consumer -.->|Update| Mongo
+    Consumer -.->|Update| Mongo1
+    Mongo1 -.->|Replicate| Mongo2
+    Mongo1 -.->|Replicate| Mongo3
     
-    Gateway -->|GET gRPC| ReadService
-    ReadService -->|Query| Mongo
+    Gateway -->|GET (gRPC)| ReadService
+    ReadService -->|Query| Mongo1
     ReadService -.->|Cache| Redis
     
     style Consumer fill:#99ff99,stroke:#006600,stroke-width:2px
     style Topic1 fill:#ffcc99
     style SQL fill:#99ccff
-    style Mongo fill:#99ff99
+    style Mongo1 fill:#99ff99
+    style Mongo2 fill:#ccffcc
+    style Mongo3 fill:#ccffcc
     style Gateway fill:#e1f5fe
     style LB fill:#e1f5fe
-````
-````
+```
+
 
 ## 🧪 Sample API Calls
 
