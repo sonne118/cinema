@@ -89,6 +89,10 @@ It separates **write operations** (business logic) from **read operations** (que
 
 ---
 
+# Cinema DDD Architecture
+
+## 🏗️ System Architecture
+````mermaid
 graph TB
     subgraph "Entry Point"
         Gateway[🌐 API Gateway<br/>Ocelot]
@@ -138,6 +142,8 @@ graph TB
     style Mongo fill:#99ff99
     style Gateway fill:#e1f5fe
     style LB fill:#e1f5fe
+````
+````
 
 ## 🧪 Sample API Calls
 
