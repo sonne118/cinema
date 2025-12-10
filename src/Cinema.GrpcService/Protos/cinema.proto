@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+option csharp_namespace = "Cinema.GrpcService";
+
+package cinema;
+
+// Cinema gRPC Service
+service CinemaService {
+  // Showtime operations
+  rpc GetShowtime (GetShowtimeRequest) returns (ShowtimeResponse);
+  rpc ListShowtimes (ListShowtimesRequest) returns (ListShowtimesResponse);
+  
+  // Reservation operations
+  rpc GetReservation (GetReservationRequest) returns (ReservationResponse);
+}
+
+// Showtime Messages
+message GetShowtimeRequest {
+  string id = 1;
+}
+
+message ListShowtimesRequest {
+  string date_filter = 1;
+  int32 page_size = 2;
+  int32 page_number = 3;
+}
+
+message CreateShowtimeRequest {
+  string movie_imdb_id = 1;
+  string screening_time = 2;
+  string auditorium_id = 3;
+}
+
+message ShowtimeResponse {
+  string id = 1;
+  MovieDetails movie = 2;
+  string screening_time = 3;
+  string auditorium_id = 4;
+  string status = 5;
+  string created_at = 6;
+}
+
+message ListShowtimesResponse {
+  repeated ShowtimeResponse showtimes = 1;
+  int32 total_count = 2;
+}
+
+message MovieDetails {
+  string imdb_id = 1;
+  string title = 2;
+  string poster_url = 3;
+  int32 release_year = 4;
+}
+
+// Reservation Messages
+message CreateReservationRequest {
+  string showtime_id = 1;
+  repeated Seat seats = 2;
+}
+
+message GetReservationRequest {
+  string id = 1;
+}
+
+message ConfirmReservationRequest {
+  string id = 1;
+}
+
+message ReservationResponse {
+  string id = 1;
+  string showtime_id = 2;
+  repeated Seat seats = 3;
+  string status = 4;
+  string created_at = 5;
+  string expires_at = 6;
+  string confirmed_at = 7;
+}
+
+message Seat {
+  int32 row = 1;
+  int32 number = 2;
+}

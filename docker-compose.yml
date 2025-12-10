@@ -1,0 +1,381 @@
+services:
+  
+
+  
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: cinema-sqlserver
+    environment:
+      SA_PASSWORD: "YourStrong@Passw0rd"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    networks:
+      - cinema-network
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "YourStrong@Passw0rd" -Q "SELECT 1" -C || exit 1
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+
+  
+  mongo1:
+    image: mongo:7.0
+    container_name: mongo1
+    command: ["--replSet", "rs0", "--bind_ip_all", "--keyFile", "/data/keyfile"]
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password123
+    volumes:
+      - mongo1-data:/data/db
+      - ./mongo-keyfile:/data/keyfile:ro
+    networks:
+      - cinema-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+
+  
+  mongo2:
+    image: mongo:7.0
+    container_name: mongo2
+    command: ["--replSet", "rs0", "--bind_ip_all", "--keyFile", "/data/keyfile"]
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password123
+    volumes:
+      - mongo2-data:/data/db
+      - ./mongo-keyfile:/data/keyfile:ro
+    networks:
+      - cinema-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+
+  
+  mongo3:
+    image: mongo:7.0
+    container_name: mongo3
+    command: ["--replSet", "rs0", "--bind_ip_all", "--keyFile", "/data/keyfile"]
+    ports:
+      - "27019:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password123
+    volumes:
+      - mongo3-data:/data/db
+      - ./mongo-keyfile:/data/keyfile:ro
+    networks:
+      - cinema-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+
+  
+  mongo-init:
+    image: mongo:7.0
+    container_name: mongo-init
+    depends_on:
+      mongo1:
+        condition: service_healthy
+      mongo2:
+        condition: service_healthy
+      mongo3:
+        condition: service_healthy
+    volumes:
+      - ./mongo-keyfile:/data/keyfile:ro
+    networks:
+      - cinema-network
+    command: >
+      bash -c "
+        echo 'Waiting for mongo nodes to come up...'
+        sleep 5
+        mongosh --host mongo1:27017 -u root -p password123 --authenticationDatabase admin --eval '
+          try {
+            rs.status();
+            print(\"Replica set already initialized\");
+          } catch (e) {
+            rs.initiate({
+              _id: \"rs0\",
+              members: [
+                { _id: 0, host: \"mongo1:27017\" },
+                { _id: 1, host: \"mongo2:27017\" },
+                { _id: 2, host: \"mongo3:27017\" }
+              ]
+            });
+            print(\"Replica set initialized\");
+          }
+        '
+      "
+
+  
+  redis:
+    image: redis:7-alpine
+    container_name: cinema-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - cinema-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  
+
+  
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: cinema-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-logs:/var/lib/zookeeper/log
+    networks:
+      - cinema-network
+
+  
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: cinema-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - cinema-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  
+
+  cinema-api-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cinema-api-1
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      mongo1:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__SqlServer: "Server=sqlserver;Database=CinemaDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True"
+      MongoDbSettings__ConnectionString: "mongodb://root:password123@mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0&authSource=admin"
+      ConnectionStrings__Redis: "redis:6379"
+      KafkaSettings__BootstrapServers: "kafka:29092"
+    ports:
+      - "5001:8080"
+    networks:
+      - cinema-network
+
+  cinema-api-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cinema-api-2
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      mongo1:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__SqlServer: "Server=sqlserver;Database=CinemaDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True"
+      MongoDbSettings__ConnectionString: "mongodb://root:password123@mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0&authSource=admin"
+      ConnectionStrings__Redis: "redis:6379"
+      KafkaSettings__BootstrapServers: "kafka:29092"
+    ports:
+      - "5002:8080"
+    networks:
+      - cinema-network
+
+  cinema-read-service-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.readservice
+    container_name: cinema-read-service-1
+    depends_on:
+      mongo1:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      MongoDbSettings__ConnectionString: "mongodb://root:password123@mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0&authSource=admin"
+      KafkaSettings__BootstrapServers: "kafka:29092"
+      ConnectionStrings__SqlServer: "Server=sqlserver;Database=CinemaDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True"
+    networks:
+      - cinema-network
+
+  cinema-read-service-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.readservice
+    container_name: cinema-read-service-2
+    depends_on:
+      mongo1:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      MongoDbSettings__ConnectionString: "mongodb://root:password123@mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0&authSource=admin"
+      KafkaSettings__BootstrapServers: "kafka:29092"
+      ConnectionStrings__SqlServer: "Server=sqlserver;Database=CinemaDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True"
+    networks:
+      - cinema-network
+
+  cinema-read-service-3:
+    build:
+      context: .
+      dockerfile: Dockerfile.readservice
+    container_name: cinema-read-service-3
+    depends_on:
+      mongo1:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      MongoDbSettings__ConnectionString: "mongodb://root:password123@mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0&authSource=admin"
+      KafkaSettings__BootstrapServers: "kafka:29092"
+      ConnectionStrings__SqlServer: "Server=sqlserver;Database=CinemaDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True"
+    networks:
+      - cinema-network
+
+  cinema-grpc:
+    build:
+      context: .
+      dockerfile: Dockerfile.grpc
+    container_name: cinema-grpc
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      mongo1:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5001
+      ConnectionStrings__SqlServer: "Server=sqlserver;Database=CinemaDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True"
+      MongoDbSettings__ConnectionString: "mongodb://root:password123@mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0&authSource=admin"
+      ConnectionStrings__Redis: "redis:6379"
+      KafkaSettings__BootstrapServers: "kafka:29092"
+    ports:
+      - "7080:5001"
+    networks:
+      - cinema-network
+
+  cinema-loadbalancer:
+    build:
+      context: .
+      dockerfile: Dockerfile.loadbalancer
+    container_name: cinema-loadbalancer
+    depends_on:
+      - cinema-api-1
+      - cinema-api-2
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:80
+    ports:
+      - "5003:80"
+    networks:
+      - cinema-network
+
+  cinema-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    container_name: cinema-gateway
+    depends_on:
+      - cinema-loadbalancer
+      - cinema-grpc
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "5005:8080"
+    networks:
+      - cinema-network
+
+  
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: cinema-mongo-express
+    depends_on:
+      - mongo1
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: password123
+      ME_CONFIG_MONGODB_URL: mongodb://root:password123@mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0&authSource=admin
+      ME_CONFIG_BASICAUTH: false
+    networks:
+      - cinema-network
+
+networks:
+  cinema-network:
+    driver: bridge
+
+volumes:
+  sqlserver-data:
+  mongo1-data:
+  mongo2-data:
+  mongo3-data:
+  redis-data:
+  kafka-data:
+  zookeeper-data:
+  zookeeper-logs:

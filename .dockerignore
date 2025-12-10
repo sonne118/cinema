@@ -1,0 +1,45 @@
+# Ignore build artifacts
+**/bin/
+**/obj/
+**/out/
+
+# Ignore IDE files
+**/.vs/
+**/.vscode/
+**/.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Ignore test results
+**/TestResults/
+
+# Ignore packages
+**/packages/
+
+# Ignore logs
+**/*.log
+
+# Ignore temporary files
+**/*.tmp
+**/*.temp
+
+# Ignore git files
+.git/
+.gitignore
+.gitattributes
+
+# Ignore docker files
+**/Dockerfile*
+**/.dockerignore
+**/docker-compose*
+
+# Ignore documentation
+*.md
+LICENSE
+
+# Ignore CI/CD
+**/.github/
+**/.gitlab-ci.yml
+**/azure-pipelines.yml

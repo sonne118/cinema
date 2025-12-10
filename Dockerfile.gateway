@@ -1,0 +1,19 @@
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+WORKDIR /app
+EXPOSE 8080
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY ["src/Cinema.ApiGateway/Cinema.ApiGateway.csproj", "src/Cinema.ApiGateway/"]
+RUN dotnet restore "src/Cinema.ApiGateway/Cinema.ApiGateway.csproj"
+COPY . .
+WORKDIR "/src/src/Cinema.ApiGateway"
+RUN dotnet build "Cinema.ApiGateway.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "Cinema.ApiGateway.csproj" -c Release -o /app/publish
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "Cinema.ApiGateway.dll"]

@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+option csharp_namespace = "Cinema.Api.Services";
+
+package cinema.write;
+
+import "google/protobuf/timestamp.proto";
+
+service CinemaWriteService {
+  rpc CreateShowtime (CreateShowtimeRequest) returns (CreateShowtimeResponse);
+  rpc CreateReservation (CreateReservationRequest) returns (CreateReservationResponse);
+}
+
+message CreateShowtimeRequest {
+  string movie_imdb_id = 1;
+  string screening_time = 2; // ISO 8601
+  string auditorium_id = 3;
+}
+
+message CreateShowtimeResponse {
+  string id = 1;
+  string status = 2;
+}
+
+message CreateReservationRequest {
+  string showtime_id = 1;
+  string customer_id = 2;
+  int32 seat_number = 3;
+  int32 row_number = 4;
+}
+
+message CreateReservationResponse {
+  string id = 1;
+  string status = 2;
+}

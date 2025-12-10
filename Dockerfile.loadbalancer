@@ -1,0 +1,44 @@
+# Stage 1: Build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy solution file
+COPY Cinema.sln ./
+
+# Copy project files
+COPY src/Cinema.LoadBalancer/Cinema.LoadBalancer.csproj src/Cinema.LoadBalancer/
+
+# Restore dependencies
+RUN dotnet restore src/Cinema.LoadBalancer/Cinema.LoadBalancer.csproj
+
+# Copy everything else
+COPY . .
+
+# Build the application
+WORKDIR /src/src/Cinema.LoadBalancer
+RUN dotnet build -c Release -o /app/build
+
+# Stage 2: Publish
+FROM build AS publish
+RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
+
+# Stage 3: Runtime
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+WORKDIR /app
+
+# Copy published files
+COPY --from=publish /app/publish .
+
+# Expose port
+EXPOSE 80
+
+# Set environment variables
+ENV ASPNETCORE_URLS=http://+:80
+ENV ASPNETCORE_ENVIRONMENT=Production
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD curl --fail http://localhost:80/health || exit 1
+
+# Run the application
+ENTRYPOINT ["dotnet", "Cinema.LoadBalancer.dll"]

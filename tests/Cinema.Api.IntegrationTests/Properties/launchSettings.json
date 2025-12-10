@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Cinema.Api.IntegrationTests": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:59815;http://localhost:59816"
+    }
+  }
+}

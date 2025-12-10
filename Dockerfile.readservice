@@ -1,0 +1,31 @@
+# Stage 1: Build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy project files
+COPY src/Cinema.Domain/Cinema.Domain.csproj src/Cinema.Domain/
+COPY src/Cinema.Application/Cinema.Application.csproj src/Cinema.Application/
+COPY src/Cinema.Contracts/Cinema.Contracts.csproj src/Cinema.Contracts/
+COPY src/Cinema.Infrastructure/Cinema.Infrastructure.csproj src/Cinema.Infrastructure/
+COPY src/Cinema.ReadService/Cinema.ReadService.csproj src/Cinema.ReadService/
+
+# Restore dependencies
+RUN dotnet restore src/Cinema.ReadService/Cinema.ReadService.csproj
+
+# Copy everything else
+COPY src/ src/
+
+# Build the application
+WORKDIR /src/src/Cinema.ReadService
+RUN dotnet build Cinema.ReadService.csproj -c Release -o /app/build
+
+# Stage 2: Publish
+FROM build AS publish
+WORKDIR /src/src/Cinema.ReadService
+RUN dotnet publish Cinema.ReadService.csproj -c Release -o /app/publish /p:UseAppHost=false
+
+# Stage 3: Runtime
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "Cinema.ReadService.dll"]
