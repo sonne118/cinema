@@ -52,10 +52,7 @@ public class OutboxProcessor : IOutboxProcessor
     public async Task StartProcessingAsync(CancellationToken cancellationToken)
     {
         var options = _config.GetSection("MasterNode").Get<MasterNodeOptions>() ?? new MasterNodeOptions();
-        
-        // Start multiple polling workers (one per Cinema API database)
-        // Assuming we have connection strings named "CinemaApi1" and "CinemaApi2"
-        // If they are not present, we can fallback or just log warning.
+
         var pollers = new List<Task>();
         
         if (!string.IsNullOrEmpty(_config.GetConnectionString("CinemaApi1")))
@@ -69,7 +66,7 @@ public class OutboxProcessor : IOutboxProcessor
             _logger.LogWarning("No CinemaApi connection strings found. Polling disabled.");
         }
         
-        // Start multiple batch processors
+      
         var processors = Enumerable.Range(0, options.ProcessorThreads)
             .Select(i => ProcessBatchesAsync(i, cancellationToken))
             .ToArray();
@@ -91,7 +88,6 @@ public class OutboxProcessor : IOutboxProcessor
                 using var connection = new SqlConnection(connectionString);
                 await connection.OpenAsync(cancellationToken);
                 
-                // Claim a batch of unprocessed messages with SELECT FOR UPDATE pattern
                 var batch = await ClaimOutboxBatchAsync(connection, options.BatchSize, cancellationToken);
                 
                 if (batch.Messages.Any())
@@ -102,7 +98,6 @@ public class OutboxProcessor : IOutboxProcessor
                 }
                 else
                 {
-                    // No messages, wait before polling again
                     await Task.Delay(options.PollingIntervalMs, cancellationToken);
                 }
             }
@@ -121,8 +116,7 @@ public class OutboxProcessor : IOutboxProcessor
     {
         var options = _config.GetSection("MasterNode").Get<MasterNodeOptions>() ?? new MasterNodeOptions();
         
-        // SQL Server-specific locking query with READPAST hint
-        // Adapted to the existing Cinema.Infrastructure OutboxMessage schema
+  
         var sql = @"
             WITH TargetMessages AS (
                 SELECT TOP (@BatchSize) 
@@ -199,7 +193,6 @@ public class OutboxProcessor : IOutboxProcessor
                 await ProcessEventGroupAsync(group.ToList(), batch.ConnectionString, ct);
             });
         
-        // Mark all messages as processed
         await MarkMessagesAsProcessedAsync(batch, cancellationToken);
     }
     
@@ -231,11 +224,7 @@ public class OutboxProcessor : IOutboxProcessor
         
         try
         {
-            // Handle different event types
-            // Note: The payload is JSON. We need to deserialize it.
-            // The user provided example classes like ReservationCreatedEvent.
-            // We need to make sure we have these classes or use JObject.
-            
+           
             if (eventType.Contains("ReservationCreated"))
             {
                 var reservationEvent = JsonSerializer.Deserialize<ReservationCreatedIntegrationEvent>(message.Content);
@@ -273,7 +262,7 @@ public class OutboxProcessor : IOutboxProcessor
         var exists = await context.Reservations
             .AnyAsync(r => r.Id == evt.ReservationId, cancellationToken);
         
-        if (exists) return; // Already processed
+        if (exists) return; 
         
         var reservation = new Reservation
         {
@@ -288,7 +277,6 @@ public class OutboxProcessor : IOutboxProcessor
         
         context.Reservations.Add(reservation);
         
-        // Add seats
         if (evt.Seats != null)
         {
             var seats = evt.Seats.Select(s => new ReservationSeat
@@ -314,7 +302,7 @@ public class OutboxProcessor : IOutboxProcessor
             .ExecuteUpdateAsync(
                 setters => setters
                     .SetProperty(r => r.Status, "Confirmed")
-                    .SetProperty(r => r.ConfirmedAt, DateTime.UtcNow), // Or evt.ConfirmedAt if available
+                    .SetProperty(r => r.ConfirmedAt, DateTime.UtcNow), 
                 cancellationToken);
     }
     

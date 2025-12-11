@@ -18,7 +18,7 @@ public class MasterDbContext : DbContext
         modelBuilder.Entity<Reservation>(entity =>
         {
             entity.ToTable("Reservations");
-            entity.HasKey(e => new { e.Id, e.CreatedAt }); // Clustered Index on Date for partitioning
+            entity.HasKey(e => new { e.Id, e.CreatedAt }); 
             entity.Property(e => e.Status).HasMaxLength(20);
             entity.Property(e => e.TotalPrice).HasColumnType("decimal(10,2)");
             
