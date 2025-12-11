@@ -1,6 +1,6 @@
 # 🎬 Cinema Reservation System
 
-A high-performance, distributed reservation system for cinemas, built with **.NET 8**, **Clean Architecture**, and **Domain-Driven Design (DDD)**. Designed for scalability, resilience, and real-world production readiness.
+A high-performance, distributed reservation system for cinemas, built with **.NET 8**, **Clean Architecture**, and **Domain-Driven Design (DDD)**. Designed for scalability, resilience.
 
 ---
 
@@ -90,18 +90,23 @@ It separates **write operations** (business logic) from **read operations** (que
 ---
 
 ## 🏗️ Architecture Overview
-```mermaid
-graph TB
-    subgraph "Entry Point"
-        Gateway["🌐 API Gateway<br/>Ocelot"]
-        LB["⚖️ Load Balancer<br/>YARP"]
+   
+graph TD
+    subgraph "Write Side - Transactional"
+        Gateway["🌐 API Gateway<br/>Port 5005"]
+        LB["⚖️ Load Balancer<br/>Port 5003"]
+        API1["⚙️ API Node 1<br/>Port 5001"]
+        API2["⚙️ API Node 2<br/>Port 5002"]
+        SQL["💾 SQL Server<br/>Write DB (CinemaDb)"]
+        
+        note_trans["📝 Atomic Transaction:<br/>1. Business Data<br/>2. Outbox Message"]
     end
-
-    subgraph "Write Side - Commands"
-        API1["⚙️ Cinema API 1<br/>Port 5001"]
-        API2["⚙️ Cinema API 2<br/>Port 5002"]
-        SQL["🗄️ SQL Server<br/>Write DB"]
-        Outbox["🔄 Outbox Job<br/>Every 10s"]
+    
+    subgraph "The Bridge - Master Node"
+        MasterNode["👷 Master Node Worker<br/>(Outbox Processor)"]
+        MasterSQL["💾 SQL Server<br/>Master DB (Reporting)"]
+        
+        note_tpl["⚡ TPL Batching<br/>Parallel.ForEachAsync"]
     end
     
     subgraph "Event Streaming"
@@ -110,8 +115,7 @@ graph TB
     end
     
     subgraph "Read Side - Queries"
-        Consumer["📥 Kafka Consumer<br/>Read Service"]
-        ReadService["🚀 Read Service<br/>gRPC Port 7080"]
+        ReadService["🚀 Read Service<br/>(Kafka Consumer)"]
         
         subgraph "MongoDB Replica Set"
             Mongo1["🍃 Primary"]
@@ -121,36 +125,43 @@ graph TB
 
         Redis["⚡ Redis<br/>Cache"]
     end
-    
+
+    %% Command Flow
     Gateway -->|POST/PUT| LB
     LB --> API1
     LB --> API2
     
     API1 -->|Write| SQL
     API2 -->|Write| SQL
+    note_trans -.-> SQL
+
+    %% The Outbox Pattern (Master Node)
+    MasterNode -->|1. Poll READPAST| SQL
+    MasterNode -->|2a. Project| MasterSQL
+    MasterNode -->|2b. Publish| Kafka
+    note_tpl -.-> MasterNode
     
-    SQL -->|Poll| Outbox
-    Outbox -->|Publish| Kafka
+    %% Event Flow
     Kafka -->|Stream| Topic1
+    Topic1 -.->|Consume| ReadService
     
-    Topic1 -.->|Consume| Consumer
-    Consumer -.->|Update| Mongo1
+    %% Read Side Updates
+    ReadService -->|Update View| Mongo1
     Mongo1 -.->|Replicate| Mongo2
     Mongo1 -.->|Replicate| Mongo3
     
+    %% Query Flow
     Gateway -->|GET gRPC| ReadService
     ReadService -->|Query| Mongo1
     ReadService -.->|Cache| Redis
     
-    style Consumer fill:#99ff99,stroke:#006600,stroke-width:2px
-    style Topic1 fill:#ffcc99
+    %% Styling
+    style MasterNode fill:#ffccff,stroke:#660066,stroke-width:3px
     style SQL fill:#99ccff
-    style Mongo1 fill:#99ff99
-    style Mongo2 fill:#ccffcc
-    style Mongo3 fill:#ccffcc
-    style Gateway fill:#e1f5fe
-    style LB fill:#e1f5fe
-```
+    style MasterSQL fill:#99ccff
+    style Kafka fill:#ffe6cc,stroke:#cc6600,stroke-width:2px
+    style Mongo1 fill:#90ee90,stroke:#006400,stroke-width:2px
+    style Redis fill:#ff6b6b,stroke:#c92a2a,stroke-width:2px
 
 ## 🧪 Sample API Calls
 
