@@ -1,96 +1,9 @@
-# 🎬 Cinema Reservation System
+# 🎬 Cinema Booking System - CQRS + Outbox Pattern
 
-A high-performance, distributed reservation system for cinemas, built with **.NET 8**, **Clean Architecture**, and **Domain-Driven Design (DDD)**. Designed for scalability, resilience.
-
----
-
-## 📖 Overview
-
-This system demonstrates a production-grade implementation of:
-
-- ✅ Clean Architecture  
-- ✅ Domain-Driven Design (DDD)  
-- ✅ CQRS (Command Query Responsibility Segregation)  
-- ✅ Event-Driven Consistency via Kafka
-
-It separates **write operations** (business logic) from **read operations** (queries), ensuring high throughput and eventual consistency.
-
----
-
-## 🚀 Features
-
-### 🎥 Showtime Management
-- Create and schedule movie showtimes per auditorium  
-- Conflict detection to prevent overlapping screenings
-
-### 🎟️ Reservation System
-- Reserve specific seats for a showtime  
-- 10-minute hold mechanism with automatic expiration  
-- Confirm reservations before expiration
-
-### ⚡ High-Performance Querying
-- Dedicated Read Service backed by MongoDB  
-- Low-latency queries independent of transactional load
-
----
-
-## 🏗️ Architecture
-
-### 🧠 CQRS Pattern
-- **Write Side**:  
-  `.NET 8 API → SQL Server → Entity Framework Core`  
-- **Read Side**:  
-  `.NET 8 gRPC Service → MongoDB`
-
-### 🧱 Domain-Driven Design
-- Rich Aggregates: `Reservation`, `Showtime`  
-- Value Objects: `SeatNumber`, `ShowtimeId`  
-- Internal expiration logic:  
-  `ExpiresAt = CreatedAt.AddMinutes(10)`
-
-### 🔁 Event-Driven Consistency (Outbox Pattern)
-- Domain events saved to `OutboxMessages` table  
-- Background job publishes events to Kafka  
-- Read Service consumes Kafka events → updates MongoDB
-
----
-
-## 🧩 Infrastructure
-
-- **API Gateway**: Ocelot  
-- **Load Balancer**: YARP  
-- **Messaging**: Kafka + Zookeeper  
-- **Cache**: Redis  
-- **Containerization**: Docker + Docker Compose  
-- **Communication**: REST + gRPC
-
----
-
-## 🧪 Testing
-
-- Unit Tests: xUnit  
-- Assertions: FluentAssertions  
-- Integration Tests: Dockerized test environment
-
----
-
-## 🧬 Tech Stack
-
-| Layer         | Technology               |
-|---------------|---------------------------|
-| Framework     | .NET 8 (C#)               |
-| Write DB      | SQL Server 2022           |
-| Read DB       | MongoDB 7.0               |
-| Cache         | Redis                     |
-| Messaging     | Apache Kafka + Zookeeper  |
-| Gateway       | Ocelot                    |
-| Load Balancer | YARP                      |
-| Container     | Docker + Compose          |
-
----
+A distributed cinema booking system implementing **CQRS** (Command Query Responsibility Segregation) with the **Transactional Outbox Pattern** for guaranteed event delivery and eventual consistency.
 
 ## 🏗️ Architecture Overview
-   
+```mermaid
 graph TD
     subgraph "Write Side - Transactional"
         Gateway["🌐 API Gateway<br/>Port 5005"]
@@ -162,24 +75,94 @@ graph TD
     style Kafka fill:#ffe6cc,stroke:#cc6600,stroke-width:2px
     style Mongo1 fill:#90ee90,stroke:#006400,stroke-width:2px
     style Redis fill:#ff6b6b,stroke:#c92a2a,stroke-width:2px
+```
 
-## 🧪 Sample API Calls
+## ✨ Key Features
 
-### Create a Showtime
-curl -X POST http://localhost:5001/api/Showtimes \
--H "Content-Type: application/json" \
--d '{
-  "movieImdbId": "tt1375666",
-  "screeningTime": "2025-12-12T20:00:00Z",
-  "auditoriumId": "0C7F275C-A5EA-456C-BBF9-4DAC0B028E73"
-}'
+### 🎯 Architectural Patterns
+- **CQRS**: Separate read and write models for optimal performance
+- **Transactional Outbox**: Guarantees event delivery without distributed transactions
+- **Event Sourcing**: Domain events captured and streamed via Kafka
+- **Eventual Consistency**: Read models updated asynchronously
 
-### Reserve Seats
-curl -X POST http://localhost:5001/api/Reservations \
--H "Content-Type: application/json" \
--d '{
-  "showtimeId": "34306464-2135-4992-89b1-3e25839fbc4f",
-  "seats": [
-    { "row": 5, "number": 10 }
-  ]
-}'
+### 🚀 Technical Highlights
+- **Load Balanced Write Side**: Horizontal scaling with multiple API nodes
+- **READPAST Locking**: Concurrent outbox processing without blocking
+- **TPL Batching**: `Parallel.ForEachAsync` for high-throughput event processing
+- **MongoDB Replica Set**: High availability for read operations
+- **Redis Caching**: Sub-millisecond query response times
+- **gRPC**: High-performance query service
+
+## 🛠️ Technology Stack
+
+| Component | Technology |
+|-----------|-----------|
+| **API Gateway** | YARP / Ocelot |
+| **Write Database** | SQL Server |
+| **Read Database** | MongoDB (Replica Set) |
+| **Cache** | Redis |
+| **Message Broker** | Apache Kafka |
+| **API Framework** | ASP.NET Core |
+| **Query Protocol** | gRPC |
+| **Background Workers** | .NET Hosted Services |
+
+## 📦 Components
+
+### Write Side (Command)
+- **API Gateway** (Port 5005): Entry point for all requests
+- **Load Balancer** (Port 5003): Distributes traffic across API nodes
+- **API Nodes** (Ports 5001-5002): Handle commands and write to SQL Server
+- **SQL Server**: Transactional write database with Outbox table
+
+### The Bridge (Master Node)
+- **Outbox Processor**: Background worker that:
+  1. Polls outbox messages using `READPAST` hint
+  2. Projects data to reporting database
+  3. Publishes events to Kafka
+- **Master SQL Server**: Centralized reporting database
+
+### Event Streaming
+- **Kafka Broker** (Port 9092): Event streaming platform
+- **Topic**: `cinema.domain.events` for all domain events
+
+### Read Side (Query)
+- **Read Service**: Kafka consumer updating MongoDB views
+- **MongoDB Replica Set**: 
+  - 1 Primary (writes)
+  - 2 Secondaries (read scaling)
+- **Redis**: Query result caching
+- **gRPC**: High-performance query API
+
+## 🔄 Data Flow
+
+### Command Flow (Write)
+1. Client sends POST/PUT → API Gateway
+2. Load Balancer routes to available API node
+3. API Node executes **atomic transaction**:
+   - Writes business data
+   - Inserts outbox message
+4. Transaction commits (both or neither)
+
+### Event Processing (Bridge)
+1. Master Node polls outbox with `READPAST` hint
+2. Processes messages in parallel batches
+3. Projects data to Master SQL
+4. Publishes events to Kafka
+5. Marks messages as processed
+
+### Query Flow (Read)
+1. Client sends GET → API Gateway
+2. Read Service queries MongoDB Primary
+3. Checks Redis cache first
+4. Returns gRPC response
+
+## 🚀 Getting Started
+
+### Prerequisites
+- .NET 8.0 SDK
+- Docker & Docker Compose
+- SQL Server
+- MongoDB
+- Redis
+- Apache Kafka
+
