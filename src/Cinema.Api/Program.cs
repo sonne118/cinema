@@ -12,7 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.ListenAnyIP(8080, o => o.Protocols = HttpProtocols.Http2);
+    options.ListenAnyIP(8080, o => o.Protocols = HttpProtocols.Http1AndHttp2);
 });
 
 
@@ -21,6 +21,7 @@ builder.Host.UseSerilog((context, configuration) =>
 
 
 builder.Services.AddControllers();
+builder.Services.AddHealthChecks();
 builder.Services.AddGrpc(); 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -79,6 +80,7 @@ app.UseCors();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHealthChecks("/health");
 app.MapGrpcService<CinemaWriteGrpcService>();
 
 

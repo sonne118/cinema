@@ -18,94 +18,43 @@ public class PublishDomainEventsInterceptor : SaveChangesInterceptor
         InterceptionResult<int> result,
         CancellationToken cancellationToken = default)
     {
-        try
+        var dbContext = eventData.Context;
+
+        if (dbContext is null)
         {
-            var dbContext = eventData.Context;
+            return await base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
 
-            if (dbContext is null)
+        var events = dbContext.ChangeTracker
+            .Entries<IHasDomainEvents>()
+            .Select(x => x.Entity)
+            .SelectMany(aggregate =>
             {
-                return await base.SavingChangesAsync(eventData, result, cancellationToken);
-            }
+                var domainEvents = aggregate.DomainEvents.ToList();
+                aggregate.ClearDomainEvents();
+                return domainEvents;
+            })
+            .ToList();
 
-            
-            var entries = dbContext.ChangeTracker.Entries().ToList();
-            var aggregatesWithEvents = new List<object>();
-            
-            foreach (var entry in entries)
-            {
-                try 
+        if (!events.Any())
+        {
+            return await base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
+
+        var outboxMessages = events.Select(domainEvent => new OutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            OccurredOnUtc = DateTime.UtcNow,
+            Type = domainEvent.GetType().Name,
+            Content = JsonConvert.SerializeObject(
+                domainEvent,
+                new JsonSerializerSettings
                 {
-                    var entity = entry.Entity;
-                    var prop = entity.GetType().GetProperty("DomainEvents");
-                    if (prop != null)
-                    {
-                        var events = prop.GetValue(entity) as IEnumerable<object>;
-                        if (events != null && events.Any())
-                        {
-                            aggregatesWithEvents.Add(entity);
-                        }
-                    }
-                }
-                catch {}
-            }
+                    TypeNameHandling = TypeNameHandling.All
+                })
+        }).ToList();
 
-            
-            var outboxMessages = new List<OutboxMessage>();
-            
-            foreach (var aggregate in aggregatesWithEvents)
-            {
-                 var prop = aggregate.GetType().GetProperty("DomainEvents");
-                 var events = prop.GetValue(aggregate) as IEnumerable<object>;
-                 
-                 if (events == null) continue;
-
-                 foreach (var domainEvent in events)
-                 {
-                     try
-                     {
-                         
-                         var occurredOn = DateTime.UtcNow;
-                         try { occurredOn = (DateTime)((dynamic)domainEvent).OccurredOnUtc; } catch {}
-
-                         
-                         
-                         
-                         
-                         
-                         var json = "TEST";
-                         
-                         outboxMessages.Add(new OutboxMessage 
-                         { 
-                            Id = Guid.NewGuid(),
-                            Type = domainEvent.GetType().Name,
-                            Content = json,
-                            OccurredOnUtc = occurredOn
-                         });
-                     }
-                     catch
-                     {
-                         
-                     }
-                 }
-                 
-                 
-             
-             
-             
-             
-             
-             
-        }
-
-        
-        
-        
-        
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"INTERCEPTOR CRASH: {ex}");
-        }
+        await dbContext.Set<OutboxMessage>().AddRangeAsync(outboxMessages, cancellationToken);
 
         return await base.SavingChangesAsync(eventData, result, cancellationToken);
     }
