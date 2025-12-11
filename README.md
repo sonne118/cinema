@@ -1,8 +1,8 @@
-# 🎬 Cinema Booking System - CQRS + Outbox Pattern
+#  Cinema Booking System - CQRS + Outbox Pattern
 
-A distributed cinema booking system implementing **CQRS** (Command Query Responsibility Segregation) with the **Transactional Outbox Pattern** for guaranteed event delivery and eventual consistency.
+A distributed cinema booking system implementing **CQRS** with the **Transactional Outbox Pattern** for guaranteed event delivery.
 
-## 🏗️ Architecture Overview
+##  Architecture
 ```mermaid
 graph TD
     subgraph "Write Side - Transactional"
