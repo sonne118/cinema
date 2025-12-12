@@ -1,8 +1,8 @@
-#  Cinema Booking System - CQRS + Outbox Pattern
+# 🎬 Cinema Booking System - CQRS + Outbox Pattern
 
-A distributed cinema booking system implementing **CQRS** with the **Transactional Outbox Pattern** for guaranteed event delivery.
+A distributed cinema booking system implementing **CQRS**, **DDD**, and the **Transactional Outbox Pattern** for guaranteed event delivery.
 
-##  Architecture
+## 🏗️ Architecture
 ```mermaid
 graph TD
     subgraph "Write Side - Transactional"
@@ -77,10 +77,130 @@ graph TD
     style Redis fill:#ff6b6b,stroke:#c92a2a,stroke-width:2px
 ```
 
+## 🎯 Domain-Driven Design (DDD)
+
+The system is organized around **bounded contexts** with clear domain boundaries and aggregate roots that maintain consistency.
+```mermaid
+graph TD
+    %% ---------------------------------------------------------
+    %% BOUNDED CONTEXT: RESERVATION (Core Domain)
+    %% ---------------------------------------------------------
+    subgraph "Reservation Context (Core Domain)"
+        direction TB
+        
+        subgraph "Reservation Aggregate"
+            Reservation[("Reservation<br/>(Aggregate Root)")]
+            ReservationSeat["ReservationSeat<br/>(Entity)"]
+            ReservationStatus["ReservationStatus<br/>(Value Object)"]
+            
+            Reservation -->|Contains| ReservationSeat
+            Reservation -->|Has| ReservationStatus
+        end
+        
+        subgraph "Domain Events"
+            EvtResCreated["⚡ ReservationCreated"]
+            EvtResConfirmed["⚡ ReservationConfirmed"]
+            EvtResCancelled["⚡ ReservationCancelled"]
+        end
+        
+        Reservation -.->|Emits| EvtResCreated
+        Reservation -.->|Emits| EvtResConfirmed
+    end
+
+    %% ---------------------------------------------------------
+    %% BOUNDED CONTEXT: SHOWTIME (Supporting Domain)
+    %% ---------------------------------------------------------
+    subgraph "Showtime Context (Supporting Domain)"
+        direction TB
+        
+        subgraph "Showtime Aggregate"
+            Showtime[("Showtime<br/>(Aggregate Root)")]
+            MovieId["MovieId<br/>(Value Object)"]
+            AuditoriumId["AuditoriumId<br/>(Value Object)"]
+            ScreeningTime["ScreeningTime<br/>(Value Object)"]
+            
+            Showtime -->|Has| MovieId
+            Showtime -->|Has| AuditoriumId
+            Showtime -->|Has| ScreeningTime
+        end
+        
+        subgraph "Showtime Events"
+            EvtShowCreated["⚡ ShowtimeCreated"]
+        end
+        
+        Showtime -.->|Emits| EvtShowCreated
+    end
+
+    %% ---------------------------------------------------------
+    %% INFRASTRUCTURE & INTEGRATION
+    %% ---------------------------------------------------------
+    subgraph "Infrastructure Layer"
+        OutboxTable[("OutboxMessages Table")]
+        KafkaBus["Kafka Event Bus"]
+        
+        EvtResCreated -->|Persisted to| OutboxTable
+        EvtResConfirmed -->|Persisted to| OutboxTable
+        EvtShowCreated -->|Persisted to| OutboxTable
+        
+        OutboxTable -->|Polled by Master Node| KafkaBus
+    end
+
+    %% ---------------------------------------------------------
+    %% READ MODELS (CQRS)
+    %% ---------------------------------------------------------
+    subgraph "Read Models (CQRS)"
+        MongoView["MongoDB View<br/>(Denormalized)"]
+        RedisCache["Redis Cache"]
+        
+        KafkaBus -->|Consumed by Read Service| MongoView
+        MongoView -.->|Cached in| RedisCache
+    end
+
+    %% Relationships
+    Reservation -->|References| Showtime
+    
+    %% Styling
+    style Reservation fill:#ffcc99,stroke:#cc6600,stroke-width:2px
+    style Showtime fill:#99ccff,stroke:#0066cc,stroke-width:2px
+    style OutboxTable fill:#e1f5fe,stroke:#0277bd
+    style KafkaBus fill:#fff3e0,stroke:#ef6c00
+    style MongoView fill:#c8e6c9,stroke:#2e7d32
+```
+
+### Bounded Contexts
+
+#### 🎫 Reservation Context (Core Domain)
+The heart of the business - manages seat reservations with strict consistency rules.
+
+- **Aggregate Root**: `Reservation`
+  - Enforces business rules (seat availability, time limits)
+  - Contains `ReservationSeat` entities
+  - Uses `ReservationStatus` value object (Pending, Confirmed, Cancelled)
+- **Domain Events**: `ReservationCreated`, `ReservationConfirmed`, `ReservationCancelled`
+- **Invariants**: No double-booking, reservation timeout enforcement
+
+#### 🎬 Showtime Context (Supporting Domain)
+Manages movie screening schedules and auditorium assignments.
+
+- **Aggregate Root**: `Showtime`
+  - References `MovieId`, `AuditoriumId` (value objects)
+  - Manages `ScreeningTime` scheduling
+- **Domain Events**: `ShowtimeCreated`
+- **Invariants**: No overlapping showtimes in same auditorium
+
+### DDD Patterns Applied
+
+- **Aggregates**: Transactional consistency boundaries
+- **Value Objects**: Immutable domain concepts (IDs, Status, Time)
+- **Domain Events**: First-class business occurrences
+- **Repositories**: Aggregate persistence abstraction
+- **Ubiquitous Language**: Business terms in code
+
 ## ✨ Key Features
 
 ### 🎯 Architectural Patterns
 - **CQRS**: Separate read and write models for optimal performance
+- **DDD**: Domain-driven design with bounded contexts and aggregates
 - **Transactional Outbox**: Guarantees event delivery without distributed transactions
 - **Event Sourcing**: Domain events captured and streamed via Kafka
 - **Eventual Consistency**: Read models updated asynchronously
@@ -165,4 +285,3 @@ graph TD
 - MongoDB
 - Redis
 - Apache Kafka
-
