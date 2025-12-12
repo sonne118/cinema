@@ -2,7 +2,7 @@
 
 A distributed cinema booking system implementing **CQRS**, **DDD**, and the **Transactional Outbox Pattern** for guaranteed event delivery.
 
-## 🏗️ Architecture
+## 🏗️ Architecture Overview
 ```mermaid
 graph TD
     subgraph "Write Side - Transactional"
@@ -76,6 +76,136 @@ graph TD
     style Mongo1 fill:#90ee90,stroke:#006400,stroke-width:2px
     style Redis fill:#ff6b6b,stroke:#c92a2a,stroke-width:2px
 ```
+
+## 🔄 Complete Data Flow
+
+The following diagram shows the end-to-end data flow from user request to query response:
+```mermaid
+graph TD
+    %% ---------------------------------------------------------
+    %% ACTORS & ENTRY POINTS
+    %% ---------------------------------------------------------
+    User((👤 User))
+    Gateway["🌐 API Gateway"]
+    LoadBalancer["⚖️ Load Balancer"]
+    
+    %% ---------------------------------------------------------
+    %% WRITE SIDE (TRANSACTIONAL)
+    %% ---------------------------------------------------------
+    subgraph WriteBlock["Write Side (Cinema API)"]
+        API["⚙️ Cinema API Node"]
+        
+        subgraph Transaction["Atomic Transaction"]
+            direction TB
+            Step1["1. Write Reservation Data"]
+            Step2["2. Write Outbox Message"]
+        end
+        
+        SQL[("💾 SQL Server (CinemaDb)<br/>Tables: Reservations, OutboxMessages")]
+    end
+
+    %% ---------------------------------------------------------
+    %% ASYNC PROCESSING (MASTER NODE)
+    %% ---------------------------------------------------------
+    subgraph MasterBlock["Async Processing (Master Node)"]
+        Poller["🔄 Poller Thread"]
+        Channel["⚡ Memory Channel"]
+        Worker["👷 Worker Thread (TPL)"]
+        
+        MasterDB[("💾 Master DB (Reporting)")]
+    end
+
+    %% ---------------------------------------------------------
+    %% EVENT STREAMING
+    %% ---------------------------------------------------------
+    Kafka["📨 Kafka Topic: cinema.reservations"]
+
+    %% ---------------------------------------------------------
+    %% READ SIDE (QUERIES)
+    %% ---------------------------------------------------------
+    subgraph ReadBlock["Read Side (Read Service)"]
+        Consumer["📥 Kafka Consumer"]
+        Mongo[("🍃 MongoDB (Read Model)")]
+        Redis[("⚡ Redis Cache")]
+    end
+
+    %% ---------------------------------------------------------
+    %% FLOW CONNECTIONS
+    %% ---------------------------------------------------------
+    
+    %% 1. User Request
+    User -->|POST /reservations| Gateway
+    Gateway --> LoadBalancer
+    LoadBalancer --> API
+    
+    %% 2. Transactional Write
+    API --> Step1
+    Step1 --> Step2
+    Step2 -->|Commit| SQL
+    
+    %% 3. Polling & Processing
+    Poller -->|Poll READPAST| SQL
+    SQL -->|Batch of Messages| Poller
+    Poller -->|Push| Channel
+    Channel -->|Pop| Worker
+    
+    %% 4. Dual Write (Projection)
+    Worker -->|Project Data| MasterDB
+    Worker -->|Publish Event| Kafka
+    
+    %% 5. Cleanup
+    Worker -.->|Mark Processed| SQL
+    
+    %% 6. Read Side Update
+    Kafka -->|Consume Event| Consumer
+    Consumer -->|Update View| Mongo
+    Mongo -.->|Invalidate/Update| Redis
+    
+    %% Styling
+    style User fill:#fff,stroke:#333,stroke-width:2px
+    style SQL fill:#bbdefb,stroke:#1565c0
+    style MasterDB fill:#e1bee7,stroke:#7b1fa2
+    style Mongo fill:#c8e6c9,stroke:#2e7d32
+    style Kafka fill:#ffe0b2,stroke:#ef6c00
+    style Channel fill:#fff9c4,stroke:#fbc02d
+```
+
+### Data Flow Stages
+
+#### 1️⃣ **Command Processing (Write Side)**
+- User sends `POST /reservations` to API Gateway
+- Load Balancer routes to available API node
+- API executes **atomic transaction**:
+  - Writes reservation to `Reservations` table
+  - Writes outbox message to `OutboxMessages` table
+- Both succeed or both fail (ACID guarantee)
+
+#### 2️⃣ **Async Event Processing (Master Node)**
+- **Poller Thread**: Polls outbox using `WITH (READPAST)` hint
+  - Avoids blocking locked rows
+  - Fetches batch of unprocessed messages
+- **Memory Channel**: Thread-safe queue for message batching
+- **Worker Thread**: Processes messages using `Parallel.ForEachAsync`
+  - Projects data to Master Reporting DB
+  - Publishes events to Kafka
+  - Marks messages as processed
+
+#### 3️⃣ **Event Streaming**
+- Domain events flow through Kafka topic: `cinema.reservations`
+- At-least-once delivery guarantee
+- Multiple consumers can subscribe
+
+#### 4️⃣ **Read Model Update**
+- **Kafka Consumer** receives events
+- Updates denormalized MongoDB view
+- Invalidates/updates Redis cache
+- Read model eventually consistent with write model
+
+#### 5️⃣ **Query Processing**
+- User sends `GET` request via gRPC
+- Read Service checks Redis cache first
+- On cache miss, queries MongoDB
+- Returns optimized denormalized view
 
 ## 🎯 Domain-Driven Design (DDD)
 
@@ -209,6 +339,7 @@ Manages movie screening schedules and auditorium assignments.
 - **Load Balanced Write Side**: Horizontal scaling with multiple API nodes
 - **READPAST Locking**: Concurrent outbox processing without blocking
 - **TPL Batching**: `Parallel.ForEachAsync` for high-throughput event processing
+- **Memory Channel**: Producer-consumer pattern for efficient message handling
 - **MongoDB Replica Set**: High availability for read operations
 - **Redis Caching**: Sub-millisecond query response times
 - **gRPC**: High-performance query service
@@ -225,6 +356,7 @@ Manages movie screening schedules and auditorium assignments.
 | **API Framework** | ASP.NET Core |
 | **Query Protocol** | gRPC |
 | **Background Workers** | .NET Hosted Services |
+| **Async Processing** | System.Threading.Channels |
 
 ## 📦 Components
 
@@ -235,10 +367,13 @@ Manages movie screening schedules and auditorium assignments.
 - **SQL Server**: Transactional write database with Outbox table
 
 ### The Bridge (Master Node)
-- **Outbox Processor**: Background worker that:
-  1. Polls outbox messages using `READPAST` hint
+- **Poller Thread**: Continuously polls outbox using `READPAST` hint
+- **Memory Channel**: Thread-safe queue for message batching
+- **Worker Thread**: Background worker that:
+  1. Processes messages in parallel using TPL
   2. Projects data to reporting database
   3. Publishes events to Kafka
+  4. Marks messages as processed
 - **Master SQL Server**: Centralized reporting database
 
 ### Event Streaming
@@ -253,29 +388,6 @@ Manages movie screening schedules and auditorium assignments.
 - **Redis**: Query result caching
 - **gRPC**: High-performance query API
 
-## 🔄 Data Flow
-
-### Command Flow (Write)
-1. Client sends POST/PUT → API Gateway
-2. Load Balancer routes to available API node
-3. API Node executes **atomic transaction**:
-   - Writes business data
-   - Inserts outbox message
-4. Transaction commits (both or neither)
-
-### Event Processing (Bridge)
-1. Master Node polls outbox with `READPAST` hint
-2. Processes messages in parallel batches
-3. Projects data to Master SQL
-4. Publishes events to Kafka
-5. Marks messages as processed
-
-### Query Flow (Read)
-1. Client sends GET → API Gateway
-2. Read Service queries MongoDB Primary
-3. Checks Redis cache first
-4. Returns gRPC response
-
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -285,3 +397,4 @@ Manages movie screening schedules and auditorium assignments.
 - MongoDB
 - Redis
 - Apache Kafka
+
